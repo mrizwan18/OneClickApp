@@ -123,8 +123,9 @@ class oneClickApp:
         beginBot.get('https://twitter.com/')
 
 
-bot = oneClickApp("twitter", "razi0075", "7751930710b")
+bot = oneClickApp("twitter", "user", "password")
 if bot.login() == -1:
     print("Wrong Input")
 time.sleep(5)
+bot.mass_follow_twitter("doraemon")
 #bot.unfollow_all()
