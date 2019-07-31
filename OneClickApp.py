@@ -3,6 +3,7 @@ import time
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
@@ -23,15 +24,18 @@ class oneClickApp:
             return -1
 
     def scroll_down(self):
-        last_height = self.beginBot.execute_script("return document.body.scrollHeight")
-        while True:
-            self.beginBot.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
-            new_height = self.beginBot.execute_script("return document.body.scrollHeight")
-            if new_height == last_height:
-                break
+        try:
+            last_height = self.beginBot.execute_script("return document.body.scrollHeight")
+            while True:
+                self.beginBot.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(2)
+                new_height = self.beginBot.execute_script("return document.body.scrollHeight")
+                if new_height == last_height:
+                    break
 
-            last_height = new_height
+                last_height = new_height
+        except Exception as error:
+            print(error)
 
     def login_Twitter(self):
         beginBot = self.beginBot
@@ -79,7 +83,18 @@ class oneClickApp:
     def mass_follow_twitter(self, keywords):
         start_time = time.time()
         beginBot = self.beginBot
-        beginBot.get('https://twitter.com/search?q=' + keywords + '&src=typd')
+        try:
+            time.sleep(2)
+            search = beginBot.find_element_by_id('search-query')
+
+            search.clear()
+            search.send_keys(keywords)
+            search.send_keys(Keys.ENTER)
+
+        except Exception as error:
+            print(error)
+        WebDriverWait(beginBot, 10).until(
+            EC.presence_of_all_elements_located)
         self.scroll_down()  # Scrolling to end of page for max tweets
         try:
             WebDriverWait(beginBot, 10).until(
@@ -153,6 +168,77 @@ class oneClickApp:
         print("Time taken: " + str(int((time.time() - start_time) / 60)) + " minutes")
         beginBot.get('https://twitter.com/')
 
+    def delete_tweets(self):
+        start_time = time.time()
+        beginBot = self.beginBot
+        beginBot.get('https://twitter.com/search?q=&src=typd')
+        self.scroll_down()  # Scrolling to end of page for max tweets
+        try:
+            WebDriverWait(beginBot, 10).until(
+                EC.presence_of_all_elements_located)
+            tweets = beginBot.find_elements_by_class_name('tweet')
+            links = [elem.get_attribute('data-permalink-path') for elem in tweets]
+            print(len(links))
+            for inner in range(0, len(links) - 1):
+                beginBot.get('https://twitter.com' + links[inner])
+                try:
+                    WebDriverWait(beginBot, 10).until(
+                        EC.presence_of_all_elements_located)
+                    beginBot.find_element(
+                        By.XPATH, "//span[text() = 'Follow']").click()
+                    time.sleep(2)
+                    print("Followed: " + links[inner].split("/")[1] + " " + str(inner + 1))
+                except Exception as error:
+                    print(error)
+
+        except Exception as error:
+            print(error)
+        print("Time taken: " + str(int((time.time() - start_time) / 60)) + " minutes")
+        beginBot.get('https://twitter.com/')
+
+    def scrap_tweets(self, keywords):
+        start_time = time.time()
+        beginBot = self.beginBot
+        scrapped = []
+        try:
+            time.sleep(2)
+            search = beginBot.find_element_by_id('search-query')
+
+            search.clear()
+            search.send_keys(keywords)
+            search.send_keys(Keys.ENTER)
+
+        except Exception as error:
+            print(error)
+
+        try:
+            WebDriverWait(beginBot, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, 'HTML')))
+            self.scroll_down()  # Scrolling to end of page for max tweets
+            WebDriverWait(beginBot, 10).until(
+                EC.presence_of_all_elements_located)
+            tweets = beginBot.find_elements_by_class_name('tweet')
+            links = [elem.get_attribute('data-permalink-path') for elem in tweets]
+            print(len(links))
+            for inner in range(0, len(links) - 1):
+                beginBot.get('https://twitter.com' + links[inner])
+                try:
+                    WebDriverWait(beginBot, 10).until(
+                        EC.presence_of_all_elements_located)
+                    scrapped.append(beginBot.find_element_by_xpath(
+                        "//div[@class='css-901oao r-hkyrab r-1qd0xha r-1blvdjr r-16dba41 r-ad9z0x r-bcqeeo r-19yat4t "
+                        "r-bnwqim r-qvutc0']").get_attribute(
+                        'innerHTML'))
+                    time.sleep(2)
+                    print("Scrapped " + str(inner + 1))
+                except Exception as error:
+                    print(error)
+
+        except Exception as error:
+            print(error)
+        print("Time taken: " + str(int((time.time() - start_time) / 60)) + " minutes")
+        beginBot.get('https://twitter.com/')
+
 
 if __name__ == "__main__":
     username = input("Input Username: ")
@@ -160,5 +246,6 @@ if __name__ == "__main__":
     bot = oneClickApp("twitter", username, password)
     bot.login()
     time.sleep(2)
-    bot.mass_follow_twitter("elon musk")
+    # bot.mass_follow_twitter("elon musk")
     # bot.unfollow_all()
+    bot.scrap_tweets("deep learning")
